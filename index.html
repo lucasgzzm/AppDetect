@@ -3,93 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScanSave - Comparador de Precios</title>
+    <title>EcoPrecio Pro - Scanner</title>
     
-    <script src="https://unpkg.com/@zxing/library@latest"></script> <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /> <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
-        header { background: #27ae60; color: white; padding: 1rem; text-align: center; }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Efecto de desenfoque tipo iOS */
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
         
-        #scanner-container { width: 100%; height: 300px; background: black; position: relative; overflow: hidden; }
-        video { width: 100%; height: 100%; object-fit: cover; }
+        #video {
+            width: 100%;
+            height: 100vh;
+            object-fit: cover;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .scan-region-highlight {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 150px;
+            border: 2px solid #22c55e;
+            border-radius: 20px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        .scan-region-highlight::after {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #22c55e;
+            top: 0;
+            animation: scan 2s infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        #map { height: 250px; border-radius: 15px; }
         
-        #info-panel { padding: 15px; background: white; border-radius: 15px -15px 0 0; margin-top: -20px; position: relative; z-index: 10; }
-        #map { height: 400px; width: 100%; margin-top: 10px; border-radius: 8px; display: none; }
-        
-        .price-tag { background: #e74c3c; color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold; }
-        .success { color: #27ae60; font-weight: bold; }
+        /* Ocultar scrollbar */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body>
+<body class="bg-black antialiased">
 
-<header>
-    <h1>EcoPrecio Scan</h1>
-</header>
-
-<div id="scanner-container">
     <video id="video"></video>
-</div>
-
-<div id="info-panel">
-    <h3>Escanea un producto</h3>
-    <p id="result">Esperando código de barras...</p>
     
-    <div id="product-details" style="display: none;">
-        <h2 id="prod-name">Producto detectado</h2>
-        <p>Mejor precio cerca de ti: <span class="price-tag" id="best-price">-</span></p>
+    <div id="scanner-guide" class="scan-region-highlight"></div>
+
+    <div class="fixed inset-0 flex flex-col justify-between p-6 pointer-events-none">
+        
+        <header class="glass rounded-3xl p-4 flex justify-between items-center pointer-events-auto shadow-2xl">
+            <div class="flex items-center gap-2">
+                <div class="bg-green-500 p-2 rounded-xl">
+                    <i data-lucide="scan-barcode" class="text-white"></i>
+                </div>
+                <h1 class="font-bold text-gray-800 text-lg">EcoPrecio</h1>
+            </div>
+            <button class="p-2 hover:bg-gray-100 rounded-full transition">
+                <i data-lucide="user" class="text-gray-600"></i>
+            </button>
+        </header>
+
+        <div id="result-panel" class="glass rounded-[2rem] p-6 pointer-events-auto shadow-2xl translate-y-[120%] transition-transform duration-500 ease-out">
+            <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6"></div>
+            
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <span class="text-xs font-bold text-green-600 uppercase tracking-widest">Producto Encontrado</span>
+                    <h2 id="prod-name" class="text-2xl font-black text-gray-900 leading-tight">Bon o Bon Leche 75g</h2>
+                </div>
+                <div class="text-right">
+                    <span class="text-sm text-gray-500">Desde</span>
+                    <div id="best-price" class="text-2xl font-black text-green-600">$1.110</div>
+                </div>
+            </div>
+
+            <div id="map" class="mb-4 shadow-inner"></div>
+
+            <button onclick="resetScanner()" class="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition">
+                <i data-lucide="refresh-cw" size="18"></i>
+                Escanear otro producto
+            </button>
+        </div>
     </div>
 
-    <div id="map"></div>
-</div>
+    <script>
+        // Inicializar Iconos
+        lucide.createIcons();
 
-<script>
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    const resultElement = document.getElementById('result');
-    const mapElement = document.getElementById('map');
-    let map, markerGroup;
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        const resultPanel = document.getElementById('result-panel');
+        const guide = document.getElementById('scanner-guide');
+        let map, markerGroup;
 
-    // 1. Iniciar Cámara y Escáner
-    codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
-        if (result) {
-            console.log("Código detectado:", result.text);
-            resultElement.innerHTML = `Código: <span class="success">${result.text}</span>`;
-            mostrarPreciosEnMapa(result.text);
-        }
-    });
-
-    // 2. Simulación de base de datos y Mapa
-    function mostrarPreciosEnMapa(codigo) {
-        document.getElementById('product-details').style.display = 'block';
-        mapElement.style.display = 'block';
-        
-        // Datos de prueba (Aquí conectarías con tu API real)
-        const datosPrueba = {
-            name: "Bon o Bon Leche 75g",
-            precios: [
-                { tienda: "Tottus", precio: "$1.110", lat: -33.4489, lng: -70.6693, color: 'green' },
-                { tienda: "Lider", precio: "$1.200", lat: -33.4550, lng: -70.6750, color: 'orange' }
-            ]
-        };
-
-        document.getElementById('prod-name').innerText = datosPrueba.name;
-        document.getElementById('best-price').innerText = datosPrueba.precios[0].precio;
-
-        // Inicializar Mapa si no existe
-        if (!map) {
-            map = L.map('map').setView([-33.4489, -70.6693], 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            markerGroup = L.layerGroup().addTo(map);
-        }
-
-        // Limpiar pines viejos y poner nuevos
-        markerGroup.clearLayers();
-        datosPrueba.precios.forEach(p => {
-            L.marker([p.lat, p.lng])
-                .addTo(markerGroup)
-                .bindPopup(`<b>${p.tienda}</b><br>Precio: ${p.precio}`)
-                .openPopup();
+        // 1. Lógica del Escáner
+        codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
+            if (result) {
+                // Feedback táctil (si el cel lo soporta)
+                if (window.navigator.vibrate) window.navigator.vibrate(100);
+                
+                showDetails(result.text);
+            }
         });
-    }
-</script>
 
+        function showDetails(codigo) {
+            guide.style.display = 'none';
+            resultPanel.classList.remove('translate-y-[120%]');
+            
+            // Simulación de búsqueda (Aquí conectarías con tu base de datos)
+            initMap();
+        }
+
+        function resetScanner() {
+            guide.style.display = 'block';
+            resultPanel.classList.add('translate-y-[120%]');
+        }
+
+        function initMap() {
+            if (!map) {
+                map = L.map('map', { zoomControl: false }).setView([-33.4489, -70.6693], 14);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+                markerGroup = L.layerGroup().addTo(map);
+            }
+
+            markerGroup.clearLayers();
+            
+            // Icono personalizado para los pines
+            const greenIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#22c55e; width:30px; height:30px; border-radius:50%; border:3px solid white; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);'></div>",
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            L.marker([-33.4489, -70.6693], {icon: greenIcon}).addTo(markerGroup)
+                .bindPopup("<b>Tottus</b><br>El más barato: $1.110").openPopup();
+        }
+    </script>
 </body>
 </html>
