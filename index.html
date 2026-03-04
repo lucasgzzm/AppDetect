@@ -1,10 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoPrecio Pro - Scanner</title>
-    
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EcoPrecio">
+    <link rel="apple-touch-icon" href="icono-app.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -19,7 +25,7 @@
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.3);
         }
-        
+
         #video {
             width: 100%;
             height: 100vh;
@@ -54,24 +60,35 @@
         }
 
         @keyframes scan {
-            0% { top: 0; }
-            100% { top: 100%; }
+            0% {
+                top: 0;
+            }
+
+            100% {
+                top: 100%;
+            }
         }
 
-        #map { height: 250px; border-radius: 15px; }
-        
+        #map {
+            height: 250px;
+            border-radius: 15px;
+        }
+
         /* Ocultar scrollbar */
-        ::-webkit-scrollbar { display: none; }
+        ::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
+
 <body class="bg-black antialiased">
 
     <video id="video"></video>
-    
+
     <div id="scanner-guide" class="scan-region-highlight"></div>
 
     <div class="fixed inset-0 flex flex-col justify-between p-6 pointer-events-none">
-        
+
         <header class="glass rounded-3xl p-4 flex justify-between items-center pointer-events-auto shadow-2xl">
             <div class="flex items-center gap-2">
                 <div class="bg-green-500 p-2 rounded-xl">
@@ -84,9 +101,10 @@
             </button>
         </header>
 
-        <div id="result-panel" class="glass rounded-[2rem] p-6 pointer-events-auto shadow-2xl translate-y-[120%] transition-transform duration-500 ease-out">
+        <div id="result-panel"
+            class="glass rounded-[2rem] p-6 pointer-events-auto shadow-2xl translate-y-[120%] transition-transform duration-500 ease-out">
             <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6"></div>
-            
+
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <span class="text-xs font-bold text-green-600 uppercase tracking-widest">Producto Encontrado</span>
@@ -100,7 +118,8 @@
 
             <div id="map" class="mb-4 shadow-inner"></div>
 
-            <button onclick="resetScanner()" class="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition">
+            <button onclick="resetScanner()"
+                class="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition">
                 <i data-lucide="refresh-cw" size="18"></i>
                 Escanear otro producto
             </button>
@@ -121,7 +140,7 @@
             if (result) {
                 // Feedback táctil (si el cel lo soporta)
                 if (window.navigator.vibrate) window.navigator.vibrate(100);
-                
+
                 showDetails(result.text);
             }
         });
@@ -129,7 +148,7 @@
         function showDetails(codigo) {
             guide.style.display = 'none';
             resultPanel.classList.remove('translate-y-[120%]');
-            
+
             // Simulación de búsqueda (Aquí conectarías con tu base de datos)
             initMap();
         }
@@ -147,7 +166,7 @@
             }
 
             markerGroup.clearLayers();
-            
+
             // Icono personalizado para los pines
             const greenIcon = L.divIcon({
                 className: 'custom-div-icon',
@@ -156,9 +175,10 @@
                 iconAnchor: [15, 15]
             });
 
-            L.marker([-33.4489, -70.6693], {icon: greenIcon}).addTo(markerGroup)
+            L.marker([-33.4489, -70.6693], { icon: greenIcon }).addTo(markerGroup)
                 .bindPopup("<b>Tottus</b><br>El más barato: $1.110").openPopup();
         }
     </script>
 </body>
+
 </html>
